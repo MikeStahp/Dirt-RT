@@ -1,4 +1,5 @@
 // Lighting and sampling functions
+#include "/lib/rt/restir.glsl"
 
 vec4 sampleGodRay(vec3 b_Sun, vec3 b_Moon, vec3 ro, vec3 rd, float far, vec3 lightDir, bool hitFace, bool inside) {
     #if Sharp_Volumetric_Light
@@ -111,68 +112,85 @@ vec3 sampleSunlight(vec3 ro, vec3 normal, vec3 Cs, vec3 Cd, vec3 rd_i, vec2 S, v
     return max(vec3(0), vec3(sampleColor) * (dot(sampleDir, lightDir) > cosD_S ? 1 : 0));
 }
 
-// Sample block light with improved sampling
-// Uses low-discrepancy sequences for better coverage without more rays
-// Foundation for future ReSTIR temporal/spatial reuse
+// Sample block light using ReSTIR
 vec3 sampleBlockLight(vec3 ro, vec3 normal, vec3 Cs, vec3 Cd, vec3 rd_i, 
                       vec2 S, vec4 R, vec3 macroNormal, bool inside) {
     float roughness = max(R.x, 0.04);
     float metallic = 1.0 - S.x;
-    
     vec3 rayOrigin = ro + macroNormal * 0.02;
-    vec3 totalContrib = vec3(0.0);
-    float totalWeight = 0.0;
-    
     vec3 V = -rd_i;
     float NdotV = max(dot(normal, V), 0.001);
     
-    for (int i = 0; i < BLOCKLIGHT_SAMPLES; i++) {
-        // Use low-discrepancy sampling for better coverage
-        vec2 xi = R2Sequence(uint(i) + iFrame * uint(BLOCKLIGHT_SAMPLES));
-        xi = temporalJitter(xi, iFrame);
-        
-        // Cosine-weighted hemisphere sampling
-        vec3 sampleDir = DiffuseNormal(macroNormal, rayOrigin + vec3(float(i)));
-        
-        vec3 ro_o, rd_o;
-        float t = raycast(rayOrigin, sampleDir, ro_o, rd_o, !inside, i16vec2(1001, 0));
-        
-        if (t < 0.0 || t > BLOCKLIGHT_MAX_DISTANCE) continue;
-        
-        vec3 hitEmission = tmp_Payload.material.emission;
-        float emissionLuma = dot(hitEmission, vec3(0.299, 0.587, 0.114));
-        if (emissionLuma < 0.001) continue;
-        
-        // Physical attenuation
-        float dist2 = t * t;
-        float attenuation = 1.0 / (1.0 + dist2 * BLOCKLIGHT_FALLOFF);
-        
-        // BRDF evaluation
-        float NdotL = max(dot(normal, sampleDir), 0.0);
-        vec3 H = normalize(V + sampleDir);
-        float NdotH = max(dot(normal, H), 0.0);
-        float VdotH = max(dot(V, H), 0.0);
-        
-        // Diffuse (Lambert)
-        vec3 diffuse = Cd * (1.0 - metallic) * (1.0 / PI);
-        
-        // Specular (GGX)
-        vec3 specular = vec3(0.0);
-        if (S.x > 0.001 && NdotL > 0.0) {
-            vec4 F = rColor(Cs, VdotH);
-            float D = GGXpdf(NdotH, 0.0, roughness);
-            float G = GGX_G2(NdotV, NdotL, roughness);
-            specular = F.rgb * D * G / (4.0 * NdotV + 0.001);
-        }
-        
-        vec3 brdf = diffuse + specular * S.x;
-        // Unbiased estimate using Importance Sampling (cosine-weighted)
-        // Contribution = (BRDF * L * NdotL * Atten) / (NdotL / PI) = BRDF * L * PI * Atten
-        vec3 sampleContrib = brdf * hitEmission * PI * attenuation * EMISSION_SCALE;
-        
-        totalContrib += sampleContrib;
+    // ReSTIR Sampling
+    uint bestIdx;
+    float weight;
+
+    // Pass local copies or references. restir.glsl uses inout
+    sampleLightsReSTIR(ro, normal, bestIdx, weight);
+
+    if (weight <= 0.0) return vec3(0.0);
+
+    Light l = lights[bestIdx];
+
+    // Direction and Distance to selected light
+    vec3 L_vec = l.position - rayOrigin;
+    float dist2 = dot(L_vec, L_vec);
+    float dist = sqrt(dist2);
+    vec3 L = L_vec / dist;
+
+    // Visibility Test (Shadow Ray)
+    vec3 ro_o, rd_o;
+    float t = raycast(rayOrigin, L, ro_o, rd_o, !inside, i16vec2(1001, 0));
+
+    // Check occlusion
+    // If t is positive and significantly less than distance to light, it's occluded.
+    // Allow a small bias or margin.
+    if (t > 0.0 && t < dist - 0.1) {
+        return vec3(0.0);
     }
     
-    // Simple unbiased average of samples
-    return BLOCKLIGHT_SAMPLES > 0 ? max(vec3(0.0), totalContrib / float(BLOCKLIGHT_SAMPLES)) : vec3(0.0);
+    // BRDF Evaluation
+    float NdotL = max(dot(normal, L), 0.0);
+    vec3 H = normalize(V + L);
+    float NdotH = max(dot(normal, H), 0.0);
+    float VdotH = max(dot(V, H), 0.0);
+
+    // Diffuse (Lambert)
+    vec3 diffuse = Cd * (1.0 - metallic) * (1.0 / PI);
+
+    // Specular (GGX)
+    vec3 specular = vec3(0.0);
+    if (S.x > 0.001 && NdotL > 0.0) {
+        vec4 F = rColor(Cs, VdotH);
+        float D = GGXpdf(NdotH, 0.0, roughness);
+        float G = GGX_G2(NdotV, NdotL, roughness);
+        specular = F.rgb * D * G / (4.0 * NdotV + 0.001);
+    }
+
+    vec3 brdf = diffuse + specular * S.x;
+
+    // Contribution = BRDF * LightColor * NdotL * Weight
+    // Note: ReSTIR Weight 'W' accounts for (1/p_hat) factor.
+    // Estimator = f(x) * W.
+    // f(x) = BRDF * LightColor * NdotL * Attenuation?
+    // Our p_hat in restir.glsl included (LightColor * NdotL / dist2).
+    // So p_hat ~= LightColor * NdotL / dist2.
+    // W = (w_sum / m) / p_hat.
+    // Result = (BRDF * LightColor * NdotL / dist2) * W
+    //        = BRDF * (LightColor * NdotL / dist2) * (w_sum/m) / (LightColor * NdotL / dist2)
+    //        = BRDF * (w_sum/m).
+    // Wait.
+    // If we simply multiply BRDF * W * p_hat, we get proper integral if p_hat is exact.
+    // Actually, ReSTIR gives us a sample 'y' and a weight 'W'.
+    // The standard estimator is: L_reflected = f(y) * W.
+    // Here f(y) is the full shading term: BRDF * Le * G * V.
+    // p_hat was an approximation of f(y) (usually Le * G).
+    // So yes, we calculate full f(y) and multiply by W.
+
+    // Physical attenuation (1/dist^2) is part of Geometry term G.
+    float attenuation = 1.0 / max(dist2, 0.1);
+
+    vec3 sampleContrib = brdf * l.color * NdotL * attenuation * weight;
+
+    return max(vec3(0.0), sampleContrib * EMISSION_SCALE);
 }
