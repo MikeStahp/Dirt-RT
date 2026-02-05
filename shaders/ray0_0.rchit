@@ -6,7 +6,6 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
-#extension GL_ARB_shader_texture_lod : enable
 
 #include "/lib/rt/data.glsl"
 #include "/lib/rt/payload.glsl"
@@ -34,126 +33,6 @@ Quad getRayQuad() {
     return geometryBuffers[nonuniformEXT(gl_InstanceCustomIndexEXT + gl_GeometryIndexEXT)].quads[gl_PrimitiveID >> 1];
 }
 
-
-#define POM_STEPS 32
-#define POM_DEPTH 0.25
-#define BINARY_SEARCH_STEPS 6
-
-#define LINEAR_SAMPLING 1
-
-
-// 辅助函数：转换纹理坐标
-vec2 getTexCoord(vec2 coord, vec4 atlas) {
-    return atlas.xy + fract(coord) * atlas.zw;
-}
-
-vec2 localUV(vec2 uv, vec4 atlas) {
-    return (uv - atlas.xy) / atlas.zw;
-}
-vec2 globalUV(vec2 uv, vec4 atlas) {
-    return uv * atlas.zw + atlas.xy;
-}
-
-float sampleHeight(sampler2D tex, vec2 coord, vec4 atlas) {
-#if LINEAR_SAMPLING == 1
-    vec2 res = textureSize(tex, 0);
-    vec2 pixel = globalUV(coord, atlas) * res;
-
-    vec2 i = floor(pixel);
-    vec2 f = (pixel - i);
-    
-    // 计算实际采样坐标
-    vec2 base_uv = localUV(i / res, atlas);
-    vec2 dx = vec2(1.0 / (res.x * atlas.z), 0.0);
-    vec2 dy = vec2(0.0, 1.0 / (res.y * atlas.w));
-    
-    // 采样四个角
-    float h00 = texture(tex, getTexCoord(base_uv, atlas)).a;
-    float h10 = texture(tex, getTexCoord(base_uv + dx, atlas)).a;
-    float h01 = texture(tex, getTexCoord(base_uv + dy, atlas)).a;
-    float h11 = texture(tex, getTexCoord(base_uv + dx + dy, atlas)).a;
-
-
-    // 双线性插值
-    return mix(
-        mix(h00, h10, f.x),
-        mix(h01, h11, f.x),
-        f.y
-    ) * POM_DEPTH - POM_DEPTH;
-#else
-    return texture(tex, getTexCoord(coord, atlas)).a * POM_DEPTH - POM_DEPTH;
-#endif
-}
-
-// 计算高度图偏导数
-vec2 computeDerivatives(vec2 coord, vec4 atlas) {
-    const float offset = 0.0005;
-    float x_h_L = sampleHeight(blockTexNormal, coord + vec2(-offset * 2, 0), atlas);
-    float x_h_R = sampleHeight(blockTexNormal, coord + vec2(offset * 2, 0), atlas);
-    float y_h_L = sampleHeight(blockTexNormal, coord + vec2(0, -offset), atlas);
-    float y_h_R = sampleHeight(blockTexNormal, coord + vec2(0, offset), atlas);
-    
-    return vec2(
-        (x_h_L - x_h_R) / (2 * offset),
-        (y_h_L - y_h_R) / (2 * offset)
-    );
-}
-
-
-vec4 getParallaxOffset(vec2 texCoord, vec3 viewDir, mat3 tbn, vec4 atlas) {
-    //return vec4(texCoord, 0, 0);
-    vec3 V = normalize(transpose(tbn) * viewDir);
-
-
-    vec2 currentTexCoord = localUV(texCoord, atlas);
-    
-    // 视线方向朝下则提前退出
-    if(V.z >= 0.0) {
-        vec2 realCoord = getTexCoord(currentTexCoord, atlas);
-        vec2 derivatives = computeDerivatives(currentTexCoord, atlas);
-        return vec4(realCoord, derivatives);
-    }
-    
-    vec2 dtex = V.xy * POM_DEPTH / (-V.z * POM_STEPS);
-    float currentHeight = 0;
-    float stepSize = POM_DEPTH / POM_STEPS;
-    
-    // Ray marching
-    float heightFromTexture = sampleHeight(blockTexNormal, currentTexCoord, atlas);
-    int steps = 0;
-    
-    while(currentHeight > heightFromTexture && steps < POM_STEPS) {
-        currentTexCoord += dtex;
-        heightFromTexture = sampleHeight(blockTexNormal, currentTexCoord, atlas);
-        currentHeight -= stepSize;
-        steps++;
-    }
-    
-    // 二分查找细化
-    vec2 prevTexCoord = currentTexCoord - dtex;
-    float prevHeight = currentHeight + stepSize;
-    
-    for(int i = 0; i < BINARY_SEARCH_STEPS; i++) {
-        dtex *= 0.5;
-        stepSize *= 0.5;
-        
-        vec2 midTexCoord = prevTexCoord + dtex;
-        float midHeight = prevHeight - stepSize;
-        float heightFromTexture = sampleHeight(blockTexNormal, currentTexCoord, atlas);
-        
-        if(heightFromTexture > midHeight) {
-            currentTexCoord = midTexCoord;
-            currentHeight = midHeight;
-        } else {
-            prevTexCoord = midTexCoord;
-            prevHeight = midHeight;
-        }
-    }
-    
-    vec2 realCoord = getTexCoord(currentTexCoord, atlas);
-    vec2 derivatives = computeDerivatives(currentTexCoord, atlas);
-    return vec4(realCoord, derivatives);
-}
 void main() {
     vec3 worldPos = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
     Quad quad = getRayQuad();
@@ -161,30 +40,10 @@ void main() {
     FragmentInfo fragInfo = getFragmentInfo(quad, baryCoord);
     vec4 shadeColor = quad.vertices[0].color * 0.0039215686274509803921568627451;
 
-
-    mat3 tbn = mat3(
-            fragInfo.tangent,
-            fragInfo.bitangent,
-            fragInfo.normal
-        );
-
-    vec4 atlas = getTextureAtlasBox(quad);
-    vec4 parallaxTexCoord_grad = getParallaxOffset(fragInfo.uv, gl_WorldRayDirectionEXT, tbn, atlas);
-
-    vec2 parallaxTexCoord = parallaxTexCoord_grad.xy; 
-    vec4 specular = texture(blockTexSpecular, parallaxTexCoord);
-    //vec4 normal = texture(blockTexNormal, parallaxTexCoord);
-    
-    vec3 normal3 = normalize(vec3(parallaxTexCoord_grad.z, parallaxTexCoord_grad.w, 1));
-    vec4 normal = vec4(normal3 * 0.5 + 0.5, texture(blockTexNormal, parallaxTexCoord).a);
-
-
-    vec2 frag_uv = getRelativeUV(fragInfo.uv, atlas);
-
-    vec4 albedo = texture(blockTex, parallaxTexCoord);
-
+    vec4 specular = texture(blockTexSpecular, fragInfo.uv);
+    vec4 normal = texture(blockTexNormal, fragInfo.uv);
+    vec4 albedo = texture(blockTex, fragInfo.uv);
     albedo.rgb = pow(albedo.rgb * shadeColor.rgb, vec3(2.2));
-
 
     fragInfo.uv=fract(fragInfo.uv*vec2(64,32));
 
@@ -202,11 +61,18 @@ void main() {
     }
 
 
-    payload.material.light_texture = vec3(mix(mix(A,B,fragInfo.uv.y),mix(D,C,fragInfo.uv.y),fragInfo.uv.x),0);
+    vec3 light_tex = vec3(mix(mix(A,B,fragInfo.uv.y),mix(D,C,fragInfo.uv.y),fragInfo.uv.x),0);
+
+    mat3 tbn = mat3(
+            fragInfo.tangent,
+            fragInfo.bitangent,
+            fragInfo.normal
+        );
 
     payload.hitData = vec4(worldPos, gl_HitTEXT);
     payload.geometryNormal = fragInfo.normal;
-    payload.material = getMaterial(albedo, normal, specular, tbn, payload.wetStrength_global, payload.wetness_global, payload.material.light_texture.y, fragInfo.normal);
+    payload.material = getMaterial(albedo, normal, specular, tbn, payload.wetStrength_global, payload.wetness_global, light_tex.y, fragInfo.normal);
+    payload.material.light_texture = light_tex;
     if (payload.inside_block) {
         if (quad.vertices[0].block_id.x == 1000) {
             payload.shadowTransmission *= exp(-clamp(gl_HitTEXT - payload.prev_distance, 0, 100) * vec3(0.1,0.03,0.04));

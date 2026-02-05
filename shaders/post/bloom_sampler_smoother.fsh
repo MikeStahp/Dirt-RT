@@ -9,7 +9,6 @@ uniform sampler2D colortex1;
 /*
 const int colortex1Format = RGBA32F;
 */
-const bool colortex0MipmapEnabled = true;
 /* RENDERTARGETS: 0,1 */
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 bloomColor;
@@ -28,7 +27,7 @@ void main() {
     if (any(isnan(fragColor.xyz))) fragColor.xyz = vec3(0);
     return;
     #else
-    const int sampleN = 16;
+    const int sampleN = 12;
     vec3 sumX = vec3(0);
     float w0 = 0;
     vec2 texSize = textureSize(colortex0, 0);

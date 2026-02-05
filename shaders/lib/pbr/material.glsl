@@ -101,11 +101,14 @@ Material getMaterial(vec4 albedo, vec4 normal, vec4 specular, mat3 tbn, float we
         material.metallic = 0;
         material.albedo = vec3(0);
     }
-    material.subsurface_scattering = 0.25;//specular.b;
+    material.subsurface_scattering = specular.b < 0.255 ? specular.b * 4.0 : 0.25; // LabPBR 1.3 SSS from specular.b
     #endif
 
-    // Emission
-    material.emission = albedo.rgb * (specular.a == 1.0 ? 0.0 : specular.a);
+    // Emission (LabPBR 1.3 format)
+    // specular.a < 1.0 indicates emission, with intensity based on the value
+    // Apply gamma correction for perceptually linear emission intensity
+    float emissionIntensity = specular.a == 1.0 ? 0.0 : pow(specular.a, 2.2);
+    material.emission = albedo.rgb * emissionIntensity * EMISSION_INTENSITY;
 
     // Ambient occlusion
     material.ambientOcclusion = 1.0 - normal.b;

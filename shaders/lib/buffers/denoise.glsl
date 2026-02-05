@@ -27,43 +27,50 @@ layout(std430, set = 3, binding = 0) buffer DenoiseBuffer {
 
 struct SH
 {
-    mediump vec4 shY; // (I arrow(d), I), not spherical harmonics
+    mediump vec4 shY;
     mediump vec2 CoCg;
 };
 
-// due to historical reasons, the SH is actually **T**, look for more details in “Algorithm Implementation” section in the paper
+// Switch to enable or disable the *look* of spherical harmonics lighting.
+// Does not affect the performance, just for A/B image comparison.
+#define ENABLE_SH 1
 
 vec3 project_SH_irradiance(SH sh, vec3 N)
 {
+    #if ENABLE_SH
+    /*
+    float d = dot(sh.shY.xyz, N);
+    float Y = 2.0 * (1.023326 * d + 0.886226 * sh.shY.w);
+    Y = max(Y, 0.0);
+
+    sh.CoCg *= Y * 0.282095 / (sh.shY.w + 1e-6);
+
+    float T = Y - sh.CoCg.y * 0.5;
+    float G = sh.CoCg.y + T;
+    float B = T - sh.CoCg.x * 0.5;
+    float R = B + sh.CoCg.x;
+
+    return max(vec3(R, G, B), vec3(0.0));
+    */
+    //vec3 shY_divided = sh.shY.xyz / (sh.shY.w + 1e-6);
+    //float diffuse = max(1 - 2 * dot(shY_divided,shY_divided), 0);
+    //float dot_ = max(dot(shY_divided, N),0);
+
     float Y = sh.shY.w;
     float T = Y - sh.CoCg.y * 0.5;
     float G = sh.CoCg.y + T;
     float B = T - sh.CoCg.x * 0.5;
     float R = B + sh.CoCg.x;
 
-    vec3 color = vec3(R, G, B)* (max(dot(sh.shY.xyz, N),0) + (Y - length(sh.shY.xyz))) / (Y+1e-3);
+
+
+    vec3 color = vec3(R,G,B) * (max(dot(sh.shY.xyz, N),0) + (Y - length(sh.shY.xyz))) / (Y+1e-3);
     return max(color, vec3(0.0));
+    #else
+    return sh.shY.xyz;
+    #endif
 }
 
-float directional_light_strength(SH sh)
-{
-    return length(sh.shY.xyz);
-}
-
-float ambient_light_strength(SH sh)
-{
-    return sh.shY.w - length(sh.shY.xyz);
-}
-
-float light_strength(SH sh)
-{
-    return sh.shY.w;
-}
-
-float light_sigma(SH sh)
-{
-    return sh.shY.w * sh.shY.w - dot(sh.shY.xyz, sh.shY.xyz);
-}
 
 vec3 test_SH(SH sh){
     vec3 color = vec3(0);
@@ -77,18 +84,42 @@ SH irradiance_to_SH(vec3 color, vec3 dir)
 {
     SH result;
 
+    #if ENABLE_SH
     float Co = color.r - color.b;
     float t = color.b + Co * 0.5;
     float Cg = color.g - t;
-    float Y = max(t + Cg * 0.5, 0);
+    float Y = max(t + Cg * 0.5, 0.0);
 
-    result.CoCg = max(vec2(Co, Cg), 0);
+    result.CoCg = vec2(Co, Cg);
+
+    /*
+    float L00 = 0.282095;
+    float L1_1 = 0.488603 * dir.y;
+    float L10 = 0.488603 * dir.z;
+    float L11 = 0.488603 * dir.x;
+    result.shY = vec4(L11, L1_1, L10, L00) * Y;
+    */
 
     result.shY = vec4(dir * Y,Y);
+    #else
+    result.shY = vec4(color, 0);
+    result.CoCg = vec2(0);
+    #endif
 
     return result;
 }
 
+vec3 SH_to_irradiance(SH sh)
+{
+    float Y = sh.shY.w / 0.282095;
+
+    float T = Y - sh.CoCg.y * 0.5;
+    float G = sh.CoCg.y + T;
+    float B = T - sh.CoCg.x * 0.5;
+    float R = B + sh.CoCg.x;
+
+    return max(vec3(R, G, B), vec3(0.0));
+}
 
 SH mix_SH(SH a, SH b, float s)
 {
@@ -123,8 +154,8 @@ struct diffuseIllumiantionData {
     SH data;
     SH data_swap;
     vec3 pos;
-    lowp vec3 normal;
-    lowp vec3 normal2;
+    mediump vec3 normal;
+    mediump vec3 normal2;
     mediump float weight;
     mediump float variance;
     mediump float prev_weight;
@@ -134,23 +165,13 @@ struct diffuseIllumiantionData {
 struct diffuseIllumiantionBufferData {
     SH data_swap;
     vec3 pos;
-    lowp vec3 normal;
-    lowp vec3 normal2;
+    mediump vec3 normal;
+    mediump vec3 normal2;
 };
-struct diffuseIllumiantionBufferDataW {
-    SH data_swap;
-    vec3 pos;
-    lowp vec3 normal;
-    lowp vec3 normal2;
-    mediump float weight;
-};
-layout(std430, set = 3, binding = 2) buffer DiffuseIllumiantionDataBuffer {
+
+layout(std140, set = 3, binding = 2) buffer DiffuseIllumiantionDataBuffer {
     diffuseIllumiantionBufferData data[];
 } diffuseIllumiantionBuffer;
-
-layout(std430, set = 3, binding = 6) buffer PrevDiffuseIllumiantionDataBuffer {
-    diffuseIllumiantionBufferDataW data[];
-} prevDiffuseIllumiantionBuffer; // for temporal reprojection
 
 struct vec3IllumiantionData {
     mediump vec3 data;
@@ -158,54 +179,27 @@ struct vec3IllumiantionData {
     vec3 pos;
     mediump vec3 normal;
     mediump float weight;
-    mediump float prev_weight;
     mediump float mixWeight;
 };
 
-layout(std430, set = 3, binding = 3) buffer ReflectIllumiantionDataBuffer {
+layout(std140, set = 3, binding = 3) buffer ReflectIllumiantionDataBuffer {
     vec3IllumiantionData data[];
 } reflectIllumiantionBuffer;
 
-layout(std430, set = 3, binding = 4) buffer RefractIllumiantionDataBuffer {
+layout(std140, set = 3, binding = 4) buffer RefractIllumiantionDataBuffer {
     vec3IllumiantionData data[];
 } refractIllumiantionBuffer;
 
 
-#if defined(PREV_DIFFUSE_BUFFER)
+/*layout(std140, set = 3, binding = 6) buffer ExtInfoBuffer {
+    vec2 data[];
+} extInfoBuffer;*/
 
-diffuseIllumiantionBufferDataW fetchPrevDiffuse(ivec2 p) {
-    return prevDiffuseIllumiantionBuffer.data[getIdx(p)];
-}
-
-diffuseIllumiantionBufferDataW blendPrevDiffuse(diffuseIllumiantionBufferDataW A,diffuseIllumiantionBufferDataW B,float x){
-    diffuseIllumiantionBufferDataW t;
-    t.data_swap=mix_SH(A.data_swap,B.data_swap,x);
-    t.pos=mix(A.pos,B.pos,x);
-    t.normal=normalize(mix(A.normal,B.normal,x));
-    t.weight = mix(A.weight,B.weight,x);
-    return t;
-}
-
-diffuseIllumiantionBufferDataW samplePrevDiffuse(vec2 p) {
-    ivec2 p1=ivec2(p);
-
-    vec2 p2=fract(p);
-    diffuseIllumiantionBufferDataW A=fetchPrevDiffuse(p1);
-    diffuseIllumiantionBufferDataW B=fetchPrevDiffuse(p1+ivec2(1,0));
-    diffuseIllumiantionBufferDataW C=fetchPrevDiffuse(p1+ivec2(0,1));
-    diffuseIllumiantionBufferDataW D=fetchPrevDiffuse(p1+ivec2(1,1));
-    return blendPrevDiffuse(blendPrevDiffuse(A,B,p2.x),blendPrevDiffuse(C,D,p2.x),p2.y);
-}
-
-void WritePrevDiffuse(diffuseIllumiantionBufferDataW data, ivec2 p) {
-    prevDiffuseIllumiantionBuffer.data[getIdx(p)] = data;
-}
-
-#endif
 
 
 
 #if defined(DIFFUSE_BUFFER) || defined(DIFFUSE_BUFFER_MIN) || defined(DIFFUSE_BUFFER_MIN2)
+
 
 layout(rgba32f) uniform image2D diffuseIllumiantionData_shY_swap;
 layout(rgba32f) uniform image2D diffuseIllumiantionData_CoCg_swap;
@@ -311,24 +305,9 @@ diffuseIllumiantionData sampleDiffuse(vec2 p){
     diffuseIllumiantionData D=fetchDiffuse(p1+ivec2(1,1));
     return blendDiffuse(blendDiffuse(A,B,p2.x),blendDiffuse(C,D,p2.x),p2.y);
 }
-vec3 sampleDiffusePos(vec2 p) {
-    ivec2 p1 = ivec2(p);
-    vec2 p2 = fract(p);    
-    vec3 posA = texelFetch(diffuseIllumiantionData_lpos_Sampler, p1, 0).xyz;
-    vec3 posB = texelFetch(diffuseIllumiantionData_lpos_Sampler, p1 + ivec2(1,0), 0).xyz;
-    vec3 posC = texelFetch(diffuseIllumiantionData_lpos_Sampler, p1 + ivec2(0,1), 0).xyz;
-    vec3 posD = texelFetch(diffuseIllumiantionData_lpos_Sampler, p1 + ivec2(1,1), 0).xyz;
-    return mix(
-        mix(posA, posB, p2.x),
-        mix(posC, posD, p2.x),
-        p2.y
-    );
-}
+
+
 void WriteDiffuse(diffuseIllumiantionData data, ivec2 p) {
-    data.weight = clamp(data.weight, 0.0, 65504);
-    data.variance = clamp(data.variance, 0.0, 65504);
-
-
     float shY_xy = uintBitsToFloat(packHalf2x16(data.data_swap.shY.xy));
     float shY_zw = uintBitsToFloat(packHalf2x16(data.data_swap.shY.zw));
     float CoCg = uintBitsToFloat(packHalf2x16(data.data_swap.CoCg));
@@ -341,11 +320,7 @@ void WriteDiffuse(diffuseIllumiantionData data, ivec2 p) {
     #if !defined(DIFFUSE_BUFFER_MIN) && !defined(DIFFUSE_BUFFER_MIN2)
     //imageStore(diffuseIllumiantionData_shY, p, data.data.shY);
     //imageStore(diffuseIllumiantionData_CoCg, p, vec4(data.data.CoCg, 0, 0));
-    data.data.shY = clamp(data.data.shY, vec4(-65504), vec4(65504));
-    data.data.CoCg = clamp(data.data.CoCg, vec2(-65504), vec2(65504));
-    data.prev_weight = clamp(data.prev_weight, 0.0, 65504);
-    data.prev_variance = clamp(data.prev_variance, 0.0, 65504);
- 
+    
     shY_xy = uintBitsToFloat(packHalf2x16(data.data.shY.xy));
     shY_zw = uintBitsToFloat(packHalf2x16(data.data.shY.zw));
     CoCg = uintBitsToFloat(packHalf2x16(data.data.CoCg));
@@ -389,14 +364,11 @@ vec3IllumiantionData fetchReflect(ivec2 p) {
     vec3IllumiantionData tmp;
     vec4 tmp4 = texelFetch(reflectIllumiantionData_color_swap_Sampler, p, 0);
     tmp.data_swap = tmp4.xyz;
-    vec2 w_mw = unpackHalf2x16(floatBitsToUint(tmp4.w)); // weight, mixWeight
-    tmp.weight = w_mw.x;
-    tmp.mixWeight = w_mw.y;
+    tmp.weight = tmp4.w;
     #ifndef REFLECT_BUFFER_MIN2
     tmp4 = texelFetch(reflectIllumiantionData_color_Sampler, p, 0);
     tmp.data = tmp4.xyz;
-    w_mw = unpackHalf2x16(floatBitsToUint(tmp4.w)); // prev_weight, 0
-    tmp.prev_weight = w_mw.x;
+    tmp.mixWeight=tmp4.w;
     tmp.normal = texelFetch(reflectIllumiantionData_lnormal_Sampler, p, 0).xyz;
     tmp.pos = texelFetch(reflectIllumiantionData_lpos_Sampler, p, 0).xyz;
     #endif
@@ -406,9 +378,8 @@ vec3IllumiantionData fetchReflect(ivec2 p) {
 vec3IllumiantionData blendReflect(vec3IllumiantionData A,vec3IllumiantionData B,float x){
     vec3IllumiantionData t;
     t.data_swap=mix(A.data_swap,B.data_swap,x);
-    t.weight=(B.weight-A.weight)*x+A.weight;
+    t.weight=(B.weight-A.weight)*x+A.weight;    
     #ifndef REFLECT_BUFFER_MIN2
-    t.prev_weight=(B.prev_weight-A.prev_weight)*x+A.prev_weight;
     t.data=mix(A.data,B.data,x);
     t.pos=mix(A.pos,B.pos,x);
     t.normal=mix(A.normal,B.normal,x);
@@ -433,11 +404,9 @@ vec3IllumiantionData sampleReflect(vec2 p){
 
 
 void WriteReflect(vec3IllumiantionData data, ivec2 p) {
-    float packed_w_mw = uintBitsToFloat(packHalf2x16(vec2(data.weight, data.mixWeight)));
-    imageStore(reflectIllumiantionData_swap_color, p, vec4(data.data_swap, packed_w_mw));
-    #if !defined(REFLECT_BUFFER_MIN) && !defined(REFLECT_BUFFER_MIN2)
-    packed_w_mw = uintBitsToFloat(packHalf2x16(vec2(data.prev_weight, 0)));
-    imageStore(reflectIllumiantionData_color, p, vec4(data.data, packed_w_mw));
+    imageStore(reflectIllumiantionData_swap_color, p, vec4(data.data_swap, data.weight));
+    #if !defined(REFLECT_BUFFER_MIN) && !defined(REFLECT_BUFFER_MIN2) 
+    imageStore(reflectIllumiantionData_color, p, vec4(data.data, data.mixWeight));
     imageStore(reflectIllumiantionData_lpos, p, vec4(data.pos, 0));
     imageStore(reflectIllumiantionData_lnormal, p, vec4(data.normal, 0));
     #endif

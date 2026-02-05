@@ -11,6 +11,16 @@
 #define Sharp_Volumetric_Light 1 // Real or Sharp [0 1]
 #define Volumetric_Light_Samples 8 // [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18 20 22 24 28 32]
 
+// Blocklight RT Settings (base para ReSTIR futuro)
+#define BLOCKLIGHT_SAMPLES 2 // Samples por pixel para blocklights RT [1 2 3 4 6 8]
+#define BLOCKLIGHT_MAX_DISTANCE 48.0 // Distancia máxima de búsqueda [16.0 24.0 32.0 48.0 64.0]
+#define EMISSION_SCALE 25.0 // Intensidad de emisión de bloques [10.0 15.0 20.0 25.0 30.0 40.0 50.0]
+#define BLOCKLIGHT_FALLOFF 0.05 // Factor de atenuación cuadrática [0.01 0.025 0.05 0.075 0.1]
+
+// Advanced RT Settings (ReSTIR/DLSS preparation)
+#define RUSSIAN_ROULETTE_DEPTH 3 // Bounce depth to start Russian Roulette [2 3 4 5]
+#define RESTIR_CANDIDATE_COUNT 4 // RIS candidate count (prep for full ReSTIR) [1 2 4 8]
+
 const float sunPathRotation = 0.0;
 //const int colortex3Format = RGBA32F;
 
