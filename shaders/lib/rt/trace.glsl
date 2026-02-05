@@ -59,6 +59,12 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
         vec4 mA, mB;
 
         material surface = Material_(ro_o, normal);
+
+        // Path Regularization: Terminate early on rough surfaces
+        if (surface.R.x > 0.6 && count >= 1) {
+             break;
+        }
+
         if (surface.R.z > 0.5) {
             vec3 offset = fbm3D(ro_o * 0.125 + time_global * 0.125, 5).yzw * 0.25;
             vec3 dH = normalize(vec3(offset.x, 1, offset.z));
@@ -153,7 +159,8 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
                 A.sampleRoughness = surface.R.x;
                 shade = (1 - rC.rgb * surface.S.x) / (1 - p + 1e-3) * k0;
             } else {
-                rd_o2 = DiffuseNormal(macroNormal, ro_o);
+                // LabPBR: Use perturbed normal for diffuse bounce
+                rd_o2 = DiffuseNormal(normal, ro_o);
                 A.type = Diffussion;
                 A.sampleRoughness = 1;
                 A.n_o = mA.x;
@@ -297,7 +304,17 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
     vec3 illumiantion = vec3(0);
 
     for (int i = count; i >= 0; i--) {
-        illumiantion = c * infos[i].shade + (directLight0[i]) / (infos[i].color + 1e-5);
+        vec3 directContrib = (directLight0[i]) / (infos[i].color + 1e-5);
+
+        // Firefly Clamping (Soft Clamp)
+        // Prevent single bright samples from exploding the accumulation
+        float directLum = luma(directContrib);
+        float limit = 20.0 / max(avgExposure, 0.001);
+        if (directLum > limit) {
+             directContrib *= limit / directLum;
+        }
+
+        illumiantion = c * infos[i].shade + directContrib;
         c = infos[i].absorption * getFogColor(SunLight, MoonLight, infos[i].p, infos[i].rd_i, -lightDir, infos[i].distance * FogS, infos[i].color * (illumiantion + infos[i].surface.light)) + infos[i].emission;
     }
 

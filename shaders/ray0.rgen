@@ -99,5 +99,6 @@ void main() {
         camPos = origin;
         camY_global = (cam.viewInverse * vec4(normalize(cam.corners[0] - cam.corners[2]), 0)).xyz;
         camX_global = (cam.viewInverse * vec4(normalize(cam.corners[0] - cam.corners[1]), 0)).xyz;
+        prevMVP = inverse(cam.viewInverse);
     }
 }

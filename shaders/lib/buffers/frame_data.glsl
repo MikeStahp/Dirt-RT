@@ -23,6 +23,9 @@ layout(std140,set=3, binding = 1) buffer frameData {
     uvec2 resolution_global;
 
     vec2 HDR_AB_global;
+
+    // Added for ReSTIR Reprojection
+    mat4 prevMVP;
 };
 
 /*struct gBufferData{
