@@ -6,8 +6,10 @@
 #include "/lib/buffers/frame_data.glsl"
 
 // Use the sampler names defined in shaders.properties
-layout(rgba32f) uniform image2D reservoirA_Sampler;
-layout(rgba32f) uniform image2D reservoirB_Sampler;
+// Assuming Set 4 for Custom Textures as per user suggestion
+// Defined as rgba32f images for Load/Store operations
+layout(set = 4, binding = 0, rgba32f) uniform image2D reservoirA_Sampler;
+layout(set = 4, binding = 1, rgba32f) uniform image2D reservoirB_Sampler;
 
 // Uniforms for reprojection
 uniform mat4 gbufferPreviousModelView;
@@ -18,7 +20,8 @@ uniform vec3 previousCameraPosition;
 const float MAX_HISTORY = 20.0;
 const float SPATIAL_RADIUS = 32.0;
 
-struct Reservoir {
+// Renamed to avoid conflict with brdf.glsl
+struct RestirReservoir {
     float w_sum;      // Sum of weights
     float W;          // Confidence weight (w_sum / (m * pHat))
     float m;          // Number of candidates seen
@@ -26,15 +29,15 @@ struct Reservoir {
 };
 
 // Pack/Unpack logic
-Reservoir unpackReservoir(vec4 data) {
-    return Reservoir(data.x, data.y, data.z, uint(data.w));
+RestirReservoir unpackReservoir(vec4 data) {
+    return RestirReservoir(data.x, data.y, data.z, uint(data.w));
 }
 
-vec4 packReservoir(Reservoir r) {
+vec4 packReservoir(RestirReservoir r) {
     return vec4(r.w_sum, r.W, r.m, float(r.light_index));
 }
 
-void initReservoir(out Reservoir r) {
+void initReservoir(out RestirReservoir r) {
     r.w_sum = 0.0;
     r.W = 0.0;
     r.m = 0.0;
@@ -68,7 +71,7 @@ vec2 reproject(vec3 pos) {
 }
 
 // Streaming Reservoir Sampling Update
-bool updateReservoir(inout Reservoir r, float w, uint lightIdx, float rnd) {
+bool updateReservoir(inout RestirReservoir r, float w, uint lightIdx, float rnd) {
     r.w_sum += w;
     r.m += 1.0;
 
@@ -82,7 +85,7 @@ bool updateReservoir(inout Reservoir r, float w, uint lightIdx, float rnd) {
 }
 
 // Combine another reservoir into the current one
-void combineReservoir(inout Reservoir r, Reservoir other, float pHat, float rnd) {
+void combineReservoir(inout RestirReservoir r, RestirReservoir other, float pHat, float rnd) {
     float w = other.W * other.m * pHat;
 
     r.w_sum += w;
@@ -94,7 +97,7 @@ void combineReservoir(inout Reservoir r, Reservoir other, float pHat, float rnd)
 }
 
 // Finalize W calculation
-void finalizeReservoir(inout Reservoir r, float pHat) {
+void finalizeReservoir(inout RestirReservoir r, float pHat) {
     if (pHat <= 0.0 || r.m == 0.0) {
         r.W = 0.0;
     } else {
@@ -103,7 +106,7 @@ void finalizeReservoir(inout Reservoir r, float pHat) {
 }
 
 // Clamp sample count to avoid history exploding
-void clampReservoir(inout Reservoir r, float maxM) {
+void clampReservoir(inout RestirReservoir r, float maxM) {
     if (r.m > maxM) {
         r.w_sum *= maxM / r.m;
         r.m = maxM;
@@ -115,7 +118,7 @@ void sampleLightsReSTIR(
     inout vec3 ro, inout vec3 normal,
     out uint bestLightIdx, out float bestLightWeight
 ) {
-    Reservoir r;
+    RestirReservoir r;
     initReservoir(r);
 
     uint lightCount = count; // From LightData SSBO
@@ -158,7 +161,7 @@ void sampleLightsReSTIR(
             prevData = imageLoad(reservoirB_Sampler, prevCoord);
         }
 
-        Reservoir prevR = unpackReservoir(prevData);
+        RestirReservoir prevR = unpackReservoir(prevData);
         clampReservoir(prevR, MAX_HISTORY);
 
         Light prevL = lights[prevR.light_index];
@@ -171,32 +174,16 @@ void sampleLightsReSTIR(
         survivorPHat = getPHat(ro, normal, survivor.position, survivor.color);
         finalizeReservoir(r, survivorPHat);
     }
-    // Else: lost history (off-screen), start fresh with initial candidates
 
     // 3. Spatial Reuse
-    // Use current screen coordinates for neighbors
     ivec2 coord = ivec2(gl_LaunchIDEXT.xy);
     ivec2 dim = ivec2(gl_LaunchSizeEXT.xy);
-
-    const int SPATIAL_SAMPLES = 2;
-    // We read from the PREVIOUS frame's reservoir structure for neighbors
-    // This effectively spreads information over time+space
-    // Note: Reusing the *current* frame's neighbors requires a second pass/barrier.
-    // Using previous frame is standard for single-pass approximation.
-    // However, neighbors should be read at *reprojected* coordinates?
-    // No, usually spatial reuse is "gather from neighbors in screen space".
-    // But if we read previous frame, we should probably read around the reprojected point?
-    // "Spatial Reuse: Combina el reservorio del píxel actual con los reservorios de sus vecinos."
-    // Standard: Screen space neighbors.
-    // If we read prev frame, reading neighbors of 'coord' (current) in 'prev' buffer gives us samples from "where this pixel was" (if we use reprojection) or "where neighbors were" (if we use screen space).
-    // Let's stick to screen space neighbors from previous frame (as we don't have current frame neighbors yet).
-    // Actually, maybe reading neighbors around `prevCoord` is more accurate?
-    // Let's use `prevCoord` (reprojected) for spatial center if valid, else `coord`.
 
     ivec2 spatialCenter = (prevUV.x >= 0.0 && prevUV.x <= 1.0 && prevUV.y >= 0.0 && prevUV.y <= 1.0) ? ivec2(prevUV * vec2(dim)) : coord;
 
     bool readFromA = (iFrame % 2 != 0);
 
+    const int SPATIAL_SAMPLES = 2;
     for (int i = 0; i < SPATIAL_SAMPLES; i++) {
         // Random neighbor
         vec2 offset = vec2(getRnd(), getRnd()) * 2.0 - 1.0;
@@ -211,7 +198,7 @@ void sampleLightsReSTIR(
             neighborData = imageLoad(reservoirB_Sampler, neighborCoord);
         }
 
-        Reservoir neighborR = unpackReservoir(neighborData);
+        RestirReservoir neighborR = unpackReservoir(neighborData);
         clampReservoir(neighborR, 5.0);
 
         Light neighborL = lights[neighborR.light_index];
