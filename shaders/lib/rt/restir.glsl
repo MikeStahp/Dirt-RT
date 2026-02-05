@@ -11,12 +11,6 @@
 layout(set = 4, binding = 0, rgba32f) uniform image2D reservoirA_Sampler;
 layout(set = 4, binding = 1, rgba32f) uniform image2D reservoirB_Sampler;
 
-// Uniforms for reprojection
-uniform mat4 gbufferPreviousModelView;
-uniform mat4 gbufferPreviousProjection;
-uniform vec3 cameraPosition;
-uniform vec3 previousCameraPosition;
-
 const float MAX_HISTORY = 20.0;
 const float SPATIAL_RADIUS = 32.0;
 
@@ -60,11 +54,32 @@ float getPHat(vec3 pos, vec3 normal, vec3 lightPos, vec3 lightColor) {
 
 // Reprojection Helper
 vec2 reproject(vec3 pos) {
-    // Transform from current player space to previous clip space
-    vec3 worldPos = pos + cameraPosition;
-    vec3 prevPlayerPos = worldPos - previousCameraPosition;
+    // We assume prevMVP stores the previous frame's View-Projection matrix
+    // Note: cameraPosition is current, we need world pos relative to previous camera?
+    // Usually MVP matrix assumes absolute world coordinates OR camera-relative.
+    // In Minecraft shaders, coordinates are often camera-relative (Player Space).
+    // If 'pos' is in *current* Player Space:
+    // P_world = pos + camPos
+    // P_prev_player = P_world - prevCamPos (Wait, MVP usually handles this?)
 
-    vec4 prevClip = gbufferPreviousProjection * gbufferPreviousModelView * vec4(prevPlayerPos, 1.0);
+    // Standard approach in this pack (ray0.rgen):
+    // cam.viewInverse transforms NDC/Screen -> World (Absolute or Camera Relative?)
+    // "vec3 origin = cam.viewInverse[3].xyz;" -> This suggests viewInverse contains Translation.
+    // If it's absolute, then 'pos' (ray origin) is absolute?
+    // Check ray0.rgen: "vec3 origin = cam.viewInverse[3].xyz;"
+    // Then raycast uses 'ro'.
+    // If 'ro' is absolute, then MVP should be absolute.
+    // frameData.prevMVP = inverse(cam.viewInverse) from previous frame.
+    // So if 'cam.viewInverse' was Absolute View -> Absolute World,
+    // then 'prevMVP' is Absolute World -> Absolute View (Clip).
+
+    // So we just need to pass 'pos' (absolute world pos) to it.
+    // BUT: In trace.glsl, 'ro' might be camera relative?
+    // ray0.rgen: "vec3 origin = cam.viewInverse[3].xyz;"
+    // This is camera position in world space.
+    // So 'ro' passed to trace is World Space.
+
+    vec4 prevClip = prevMVP * vec4(pos, 1.0);
     vec3 prevNDC = prevClip.xyz / prevClip.w;
 
     return prevNDC.xy * 0.5 + 0.5;
