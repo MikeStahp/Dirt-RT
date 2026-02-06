@@ -22,11 +22,6 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
     vec4 fogColor = (isEyeInWater == 2u) ? vec4(0, 0.05, 0.075, 0.1) * 5 : vec4(0, 0.325, 0.295, 0.3);
     vec3 emission = (isEyeInWater == 2u) ? vec3(1, 0.25, 0.05) * 10 : vec3(0);
 
-    for (count = 0; count < MaxRay; count++) {
-        infos[count].distance = 1e10;
-        infos[count].surface.light = vec3(0);
-    }
-
     vec2 mixWeight = vec2(0);
     bool hitSmoothSurface = false;
     bool hit_diffuse = false;
@@ -42,7 +37,10 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
         else
             t = raycast(ro_i, rd_i, ro_o, rd_o, !inverse_0);
 
-        if (t < -0.5) break;
+        if (t < -0.5) {
+            infos[count].distance = 1e10;
+            break;
+        }
         ro_i = ro_o;
         rd_i = rd_o;
 
