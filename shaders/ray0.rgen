@@ -5,7 +5,6 @@
 #extension GL_EXT_ray_tracing : enable
 #define IN_VULKANITE
 #include "/lib/rt/payload.glsl"
-#include "/lib/rand.glsl"
 #include "/lib/constants.glsl"
 #include "/lib/settings.glsl"
 #include "/lib/light_color.glsl"
@@ -50,7 +49,6 @@ bool useLastFrameSample = false;
 #include "/lib/rt/trace.glsl"
 
 void main() {
-    initRNG(uvec2(0), cam.frameId);
     vec2 px = vec2(gl_LaunchIDEXT.xy); //+ randVec2();
     vec2 p = px / vec2(gl_LaunchSizeEXT.xy);
     world_type_global = int(cam.world_type);
