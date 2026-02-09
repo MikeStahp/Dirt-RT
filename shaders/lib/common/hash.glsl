@@ -142,7 +142,9 @@ vec4 hash44(vec4 p4)
 // Simple hash function
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    // Optimized: Use ALU-based hash11 instead of expensive trigonometric function (cos)
+    // This significantly improves performance for heavy consumers like noised/fbm3D
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
