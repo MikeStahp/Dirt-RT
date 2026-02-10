@@ -139,10 +139,10 @@ vec4 hash44(vec4 p4)
     return fract((p4.xxyz + p4.yzzw) * p4.zywx);
 }
 
-// Simple hash function
+// Simple hash function - optimized to avoid trigonometric functions
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
