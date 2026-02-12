@@ -50,7 +50,9 @@ bool useLastFrameSample = false;
 #include "/lib/rt/trace.glsl"
 
 void main() {
-    initRNG(uvec2(0), cam.frameId);
+    // ⚡ Bolt: Init RNG with pixel coordinates for correct Monte Carlo convergence.
+    // This allows us to use the faster stateful randFloat() instead of expensive position-based hashing.
+    initRNG(uvec2(gl_LaunchIDEXT.xy), cam.frameId);
     vec2 px = vec2(gl_LaunchIDEXT.xy); //+ randVec2();
     vec2 p = px / vec2(gl_LaunchSizeEXT.xy);
     world_type_global = int(cam.world_type);

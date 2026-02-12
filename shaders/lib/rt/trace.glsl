@@ -95,11 +95,12 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
 
         float rs = mA.x / mB.x;
         float F = clamp(fresnel(-rd_i, microNormal, rs), 0, 1);
-        bool r = rand(ro_o) < 1 - F;
+        // ⚡ Bolt: randFloat() is faster than position-based hashing rand(ro_o)
+        bool r = randFloat() < 1 - F;
 
         float p1 = p + (1 - p) * F * surface.S.y;
 
-        bool b = rand(ro_o) < p;
+        bool b = randFloat() < p;
         A.microNormal = microNormal;
         A.macroNormal = macroNormal;
         A.color2 = surface.Cs;
@@ -128,7 +129,7 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
 
             if (r) rd_refract = refract(rd_i, microNormal, rs);
 
-            refract_ = rand(ro_o) < surface.S.y;
+            refract_ = randFloat() < surface.S.y;
             I = surface.Cd;
 
             vec3 rd_o2;
@@ -207,7 +208,7 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
             float rrProb = russianRouletteProb(throughput);
             
             // Probabilistically terminate path
-            if (rand(ro_o + vec3(float(count))) > rrProb) {
+            if (randFloat() > rrProb) {
                 break; // Path terminated
             }
             
@@ -261,8 +262,8 @@ vec4 Trace(uvec2 coord, vec3 ro, vec3 rd, vec3 lightDir) {
         for (int i = count; i >= 0; i--) {
             float sr2 = infos[i].sampleRoughness * infos[i].sampleRoughness;
             float p = sr2 / A;
-            float randVal1 = rand(ro_o - rd);
-            float randVal2 = rand(ro_o + rd);
+            float randVal1 = randFloat();
+            float randVal2 = randFloat();
 
             bool b0 = randVal1 < p && c0;
             bool b1 = randVal2 < p && c1;
