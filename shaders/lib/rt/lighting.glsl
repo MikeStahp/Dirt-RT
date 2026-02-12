@@ -52,8 +52,9 @@ vec3 sampleSunlight(vec3 ro, vec3 normal, vec3 Cs, vec3 Cd, vec3 rd_i, vec2 S, v
     XYZ(lightDir, X, Y, Z);
     vec3 ro_o, rd_o;
 
-    float r1 = rand(ro);
-    float alpha = rand(ro + lightDir) * 2 * PI;
+    // ⚡ Bolt: randFloat() provides faster uniform random numbers than rand(vec3)
+    float r1 = randFloat();
+    float alpha = randFloat() * 2 * PI;
     float cosbeta = 1 - r1 * (1 - cosD_S);
     vec3 sampleDir = cosbeta * Y + sqrt(1 - cosbeta * cosbeta) * (cos(alpha) * X + sin(alpha) * Z);
 
