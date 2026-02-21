@@ -1,0 +1,3 @@
+## 2024-05-23 - Trig-based Hash Anti-pattern
+**Learning:** The codebase contained a legacy `hash(float)` function using `cos(n)` which was heavily used in `noised` (8 calls per invocation) and subsequently in `fbm3D` (40 calls per ray). This is a significant performance anti-pattern on GPUs where ALU operations are much faster than SFU (trig) operations. A faster ALU-based `hash11` was already available in the same file but unused by `hash(float)`.
+**Action:** Always check `hash` implementations in GLSL codebases. Prefer ALU-based hashes (like Dave Hoskins' hash functions) over trigonometric ones, especially in noise functions.
