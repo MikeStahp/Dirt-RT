@@ -1,0 +1,3 @@
+## 2024-05-22 - GLSL Hash Function Optimization
+**Learning:** Trigonometric functions (`cos`, `sin`, `tan`, `atan`) in GLSL hash functions are extremely expensive (SFU operations) compared to ALU operations (`fract`, `dot`). Replacing them with Dave Hoskins' hash functions (ALU-based) yields significant performance gains, especially in hot paths like noise generation (`fbm3D`, `noised`) which make heavy use of hashing.
+**Action:** Always inspect custom hash functions for trigonometric operations and replace them with standard ALU-based implementations (e.g., Dave Hoskins' `hash11`, `hash12`, etc.) unless specific distribution properties of the trig-based hash are strictly required.
