@@ -140,9 +140,10 @@ vec4 hash44(vec4 p4)
 }
 
 // Simple hash function
+// Aliased to hash11 to avoid expensive trigonometric operations on the SFU
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
