@@ -1,0 +1,3 @@
+## 2024-05-14 - Optimize `hash(float)` via ALU-based aliasing
+**Learning:** In GLSL environments, trigonometric functions (e.g., `cos`, `sin`) are executed on the limited SFU (Special Function Unit) and constitute major bottlenecks. A stateless hash like `hash(float)` using `fract(cos(n) * 41415.92653)` is particularly problematic when used inside frequently called functions like 3D value noise (`noised`) or Fractal Brownian Motion (`fbm3D`), which stack dozens of `hash` calls per pixel/ray.
+**Action:** Replace simple trig-based hashes with ALU-based hashes (e.g., aliasing `hash(float)` to `hash11(n)`) throughout hot paths to alleviate SFU pressure, ensuring performance optimizations without sacrificing noise quality.
