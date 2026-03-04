@@ -142,7 +142,10 @@ vec4 hash44(vec4 p4)
 // Simple hash function
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    // [⚡Bolt] Replaced expensive trig function (cos) with ALU-based hash11 to reduce
+    // SFU overhead. This function is called 8x per `noised` and 40x per `fbm3D` invocation,
+    // making it a critical path for performance optimization.
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
