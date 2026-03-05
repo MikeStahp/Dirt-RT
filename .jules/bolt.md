@@ -1,0 +1,3 @@
+## 2024-05-15 - [Trigonometric vs ALU Hash Performance]
+**Learning:** Using trigonometric functions (`cos`, `sin`, `tan`) in inner loops for hash functions (like `hash(float)` being used 8 times per `noised` call) creates severe Special Function Unit (SFU) bottlenecks in GLSL shaders on GPUs. This is a critical path bottleneck for water and FBM rendering in this raw GLSL path tracing context.
+**Action:** Always prefer pure ALU-based hash functions (like Dave Hoskins' `hash11` through `hash44` methods) over trigonometric operations to minimize instruction cost and maximize throughput. Replace legacy trig-based hashes where safe.
