@@ -1,0 +1,3 @@
+## 2024-05-24 - [Avoid Trigonometric Operations in GLSL Hashes]
+**Learning:** This Vulkanite GLSL codebase is highly sensitive to Special Function Unit (SFU) usage in loops (e.g., trigonometric operations like `cos()`, `tan()`, `atan()`). Using `cos()` in frequently-called functions like `hash(float n)` (which is used 8 times per call in `noised`) introduces a critical bottleneck. The existing `hash11` uses Dave Hoskins' ALU-based method which runs significantly faster.
+**Action:** Always prefer pure ALU operations for hashing (`hash11`, `hash12`, etc.) over transcendental/trig functions. Refactor `hash(n)` to wrap `hash11(n)`.
