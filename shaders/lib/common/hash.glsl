@@ -140,9 +140,13 @@ vec4 hash44(vec4 p4)
 }
 
 // Simple hash function
+// ⚡ Bolt Optimization: Switched from cos() to ALU-based hash11() to avoid
+// Special Function Unit (SFU) bottlenecks. `hash(float)` is called repeatedly
+// by noise functions like `noised()`, so avoiding trig here provides a
+// significant performance improvement.
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
