@@ -1,0 +1,3 @@
+## 2024-05-24 - Avoid Trigonometric Functions in Hashes
+**Learning:** In GLSL shaders, relying on trigonometric functions (`tan`, `atan`, `cos`) for generic hash generation causes significant Special Function Unit (SFU) overhead, becoming a major performance bottleneck in heavily used functions like FBM or noise rendering (which call hash multiple times).
+**Action:** Always prefer pure ALU-based hash functions (like Dave Hoskins' methods using `fract` and `dot`) over trigonometric ones in GLSL to minimize SFU instruction cost and improve rendering performance.
