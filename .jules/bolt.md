@@ -1,0 +1,3 @@
+## 2024-05-24 - Trigonometric functions in hash functions cause SFU bottlenecks
+**Learning:** Using trigonometric functions like `cos`, `tan`, and `atan` in GLSL hash functions (e.g. `hash`, `hash12`, `hash13`, `hash14`) causes severe Special Function Unit (SFU) bottlenecks, especially when used in critical paths like noise generation or FBM. The project utilizes pure ALU-based hash functions (Dave Hoskins' method) elsewhere, which should be preferred for performance.
+**Action:** Replace `hash(float n)` with an alias to the ALU-based `hash11(n)`, and remove `tan` and `atan` operations from `hash12`, `hash13`, and `hash14` to standardize on the faster ALU method.
