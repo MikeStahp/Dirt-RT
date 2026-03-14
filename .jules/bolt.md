@@ -1,0 +1,3 @@
+## 2024-05-24 - [Avoid Trigonometric Operations in Hash Functions]
+**Learning:** In GLSL shaders, especially for noise generation which is called thousands of times per ray/pixel, trigonometric functions like `tan`, `atan`, `cos`, and `sin` introduce massive instruction latency and Special Function Unit (SFU) bottlenecks.
+**Action:** Always prefer ALU-based pseudo-random hash functions (e.g., Dave Hoskins' methods) over trigonometric variants. When wrapping base hashes for specific use cases (like `valueNoise`), avoid generic function aliases that rely on `cos` or `sin` and invoke the ALU hash directly.
