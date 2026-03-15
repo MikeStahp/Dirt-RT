@@ -1,0 +1,3 @@
+## 2024-05-24 - Trigonometric Hash Functions Bottleneck
+**Learning:** In GLSL shaders, using trigonometric operations (`sin`, `cos`, `tan`, `atan`) inside hash functions leads to high instruction cost due to heavy reliance on Special Function Units (SFU). Functions like `hash(float)` (used heavily by `noised`) and `hash12`/`hash13`/`hash14` were using `cos`, `tan`, and `atan`, making them a performance bottleneck.
+**Action:** Always prefer pure ALU-based hash functions (like Dave Hoskins' method, e.g., `hash11`, `fasthash13`) over trigonometric ones to avoid SFU overhead. Replace `hash(float)` with an alias to `hash11(float)`, and switch `hash12`, `hash13`, `hash14` to standard ALU operations.
