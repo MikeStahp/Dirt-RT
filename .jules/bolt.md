@@ -1,0 +1,3 @@
+## 2024-10-27 - [Optimize Generic Hash Function]
+**Learning:** The simple generic `hash(float)` function in `shaders/lib/common/hash.glsl` originally used expensive trigonometric operations (`cos`) combined with a large multiplier (`41415.92653`). This incurred high Special Function Unit (SFU) overhead, which is heavily bottlenecked in critical paths like `noised` (3D value noise, which evaluates `hash()` 8 times per iteration) and `fbm3D`.
+**Action:** Replace `hash(float)` implementations relying on trigonometric functions (`sin`, `cos`, `tan`) with Dave Hoskins' ALU-based methods (e.g., `hash11`), which are faster, avoid SFU bottlenecks, and provide comparable pseudo-random distribution.
