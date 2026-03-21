@@ -1,0 +1,3 @@
+## 2024-05-24 - Trigonometric vs ALU Hash Functions
+**Learning:** Using trigonometric functions like `cos` or `sin` inside frequently called hash functions (such as `hash()` used in 3D noise generation) causes massive Special Function Unit (SFU) bottlenecks on GPUs. In an FBM context with multiple octaves, this can mean hundreds of redundant `cos` evaluations per ray.
+**Action:** Always prefer ALU-based hash functions like Dave Hoskins' method (`hash11`, `hash12`, etc.) over legacy trigonometric one-liners (`fract(cos(n)*41415.92653)`). Ensure the base `hash(float)` acts as an alias to `hash11`.
