@@ -201,12 +201,18 @@ void GenSky(vec3 b_Sun,vec3 b_Moon,vec3 lightDir,vec3 pos,ivec2 uv){
 }
 const int blurR=8;
 const int blurSize=2*blurR+1;
+// Precomputed weights for exp(-0.125 * i * i) to avoid SFU overhead in loop
+const float[] blurSkyExpWeights = float[](
+    0.000335, 0.002187, 0.011109, 0.043937, 0.135335, 0.324652, 0.606531, 0.882497,
+    1.000000,
+    0.882497, 0.606531, 0.324652, 0.135335, 0.043937, 0.011109, 0.002187, 0.000335
+);
 
 void BlurSkyX(ivec2 uv){
     vec3 c=vec3(0);
     float w=0;
     for(int i=-blurR;i<=blurR;i++){
-        float w0=exp(-0.125*i*i);
+        float w0=blurSkyExpWeights[i + blurR];
         c+=w0*skyBuffer.data[getSkyBufferIdx(uv+ivec2(i,0))][0];
         w+=w0;
     }
@@ -216,7 +222,7 @@ void BlurSkyY(ivec2 uv){
     vec3 c=vec3(0);
     float w=0;
     for(int i=-blurR;i<=blurR;i++){
-        float w0=exp(-0.125*i*i);
+        float w0=blurSkyExpWeights[i + blurR];
         c+=w0*skyBuffer.data[getSkyBufferIdx(uv+ivec2(0,i))][1];
         w+=w0;
     }
