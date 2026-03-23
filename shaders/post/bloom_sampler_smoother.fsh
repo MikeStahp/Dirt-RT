@@ -28,17 +28,23 @@ void main() {
     return;
     #else
     const int sampleN = 12;
+    // Precomputed weights for exp(-i * i * 0.025) to avoid SFU overhead in loop
+    const float[] expWeights = float[](
+        0.027324, 0.048558, 0.082085, 0.131994, 0.201897, 0.293758, 0.406570, 0.535261, 0.670320, 0.798516, 0.904837, 0.975310,
+        1.000000,
+        0.975310, 0.904837, 0.798516, 0.670320, 0.535261, 0.406570, 0.293758, 0.201897, 0.131994, 0.082085, 0.048558, 0.027324
+    );
     vec3 sumX = vec3(0);
     float w0 = 0;
     vec2 texSize = textureSize(colortex0, 0);
     for (int i = -sampleN; i <= sampleN; i++) {
         
         #if STEP==1
-        float w = exp(-i * i * 0.025);
+        float w = expWeights[i + sampleN];
         w *= float(clamp(gl_FragCoord.xy + vec2(i * 5, 0), vec2(0), texSize) == gl_FragCoord.xy + vec2(i * 5, 0));
         sumX += texelFetch(colortex1, ivec2(gl_FragCoord.xy + vec2(i * 5, 0)), 0).xyz * w;
         #else
-        float w = exp(-i * i * 0.025);
+        float w = expWeights[i + sampleN];
         w *= float(clamp(gl_FragCoord.xy + vec2(0, i * 5), vec2(0), texSize) == gl_FragCoord.xy + vec2(0, i * 5));
         sumX += texelFetch(colortex1, ivec2(gl_FragCoord.xy + vec2(0, i * 5)), 0).xyz * w;
         #endif

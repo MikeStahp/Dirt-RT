@@ -1,0 +1,3 @@
+## 2024-05-18 - Precomputing loop-invariant exp() calls
+**Learning:** Calling transcendental functions like `exp()` inside loops with constant iterator values (e.g. `exp(-i*i*0.05)`) triggers expensive Special Function Unit (SFU) evaluations per iteration. Even though these values are technically constants, they are not always folded effectively by the compiler, especially across different hardware architectures.
+**Action:** When working on shaders where filter weights or other loop-invariant values rely on functions like `exp()`, `pow()`, etc., precompute the values into a `const float[]` lookup table to guarantee optimization and eliminate SFU bottlenecks.
