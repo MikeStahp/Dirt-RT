@@ -1,0 +1,3 @@
+## 2024-03-26 - [Avoid Trigonometric Operations in Hash Functions]
+**Learning:** In GLSL shaders, especially inside heavy loops like `fbm3D` or `noised` (which evaluates hash up to 40 times), trigonometric operations (`tan`, `atan`, `cos`) become significant performance bottlenecks due to Special Function Unit (SFU) usage constraints.
+**Action:** Replace trig-based hashing with purely ALU-based methods (e.g., Dave Hoskins' `hash` variants like `hash12`, `hash13`, `hash14`). Ensure utility functions like `hash(float)` properly alias an ALU method like `hash11(n)` instead of regressing to `.cos()` equivalents.
