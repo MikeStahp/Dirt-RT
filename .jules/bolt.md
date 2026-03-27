@@ -1,0 +1,3 @@
+## 2024-05-24 - [Trigonometric Hash Bottleneck]
+**Learning:** [The `hash(float)` function in `shaders/lib/common/hash.glsl` uses expensive trigonometric operations (`cos`), which causes significant Special Function Unit (SFU) overhead. This is especially problematic because it's called 8 times per `noised()` invocation, creating a critical bottleneck in noise generation.]
+**Action:** [Replaced the trigonometric `hash` implementation with a strict alias to the pure ALU-based `hash11(n)` (Dave Hoskins' method). Next time, proactively look for trigonometric functions in inner loops or frequently called utility functions and replace them with ALU-based approximations or implementations.]
