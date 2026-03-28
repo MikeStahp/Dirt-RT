@@ -13,38 +13,36 @@ float hash11(float p)
 
 //----------------------------------------------------------------------------------------
 //  1 out, 2 in...
+// Optimized: Replaced trig functions with ALU-based Dave Hoskins' method to reduce SFU bottlenecks
 float hash12(vec2 p)
 {
     vec3 p3 = fract(vec3(p.xyx) * .1031);
-    p3 = fract(tan(dot(p3, p3) * 20 * atan(p3)));
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
 
 //----------------------------------------------------------------------------------------
 //  1 out, 3 in...
+// Optimized: Replaced trig functions with ALU-based Dave Hoskins' method to reduce SFU bottlenecks
 float hash13(vec3 p3)
 {
     p3 = fract(p3 * .1031);
-    p3 = fract(tan(dot(p3, p3) * 20 * atan(p3)));
     p3 += dot(p3, p3.zyx + 31.32);
     return fract((p3.x + p3.y) * p3.z);
 }
 
+// Kept for backward compatibility as an alias to the optimized hash13
 float fasthash13(vec3 p3)
 {
-    p3 = fract(p3 * .1031);
-    p3 += dot(p3, p3.zyx + 31.32);
-    return fract((p3.x + p3.y) * p3.z);
+    return hash13(p3);
 }
 
 //----------------------------------------------------------------------------------------
 // 1 out 4 in...
+// Optimized: Replaced trig functions with ALU-based Dave Hoskins' method to reduce SFU bottlenecks
 float hash14(vec4 p4)
 {
     p4 = fract(p4 * vec4(.1031, .1030, .0973, .1099));
-    p4 = fract(tan(dot(p4, p4) * 20 * atan(p4)));
-
     p4 += dot(p4, p4.wzxy + 33.33);
     return fract((p4.x + p4.y) * (p4.z + p4.w));
 }
@@ -140,9 +138,10 @@ vec4 hash44(vec4 p4)
 }
 
 // Simple hash function
+// Optimized: Replaced trig functions with ALU-based Dave Hoskins' method (hash11) to reduce SFU bottlenecks
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
