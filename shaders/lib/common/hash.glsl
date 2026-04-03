@@ -140,9 +140,11 @@ vec4 hash44(vec4 p4)
 }
 
 // Simple hash function
+// ⚡ Bolt: Optimized to use ALU-based hash11 instead of expensive trigonometric functions (cos).
+// Reduces SFU (Special Function Unit) bottlenecks significantly since this is used heavily in `noised` and `fbm3D`.
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
