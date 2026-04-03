@@ -1,0 +1,3 @@
+## 2024-05-24 - Trigonometric Function Bottleneck in GLSL Noise Functions
+**Learning:** The `hash(float)` function in `shaders/lib/common/hash.glsl` was using an expensive trigonometric operation (`cos`) which acts as a bottleneck on Special Function Units (SFUs), especially when called frequently in inner loops (e.g., `noised` calls `hash` 8 times per iteration, and `fbm3D` multiplies this further). Using pure ALU-based hash methods like Dave Hoskins' is significantly faster.
+**Action:** When working on shader performance, always prefer pure ALU math for hashing instead of `sin`, `cos`, or `tan`, and ensure utility functions that wrap other operations don't regress to slower implementations.
