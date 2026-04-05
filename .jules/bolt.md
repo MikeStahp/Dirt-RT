@@ -1,0 +1,3 @@
+## 2024-05-24 - Avoid Trigonometric Functions in GLSL Hash Functions
+**Learning:** The simple `hash(float n)` function commonly found in GLSL codebases uses `fract(cos(n) * 41415.92653)`. This requires the Special Function Unit (SFU) to compute the cosine. When used heavily (e.g., in 3D noise functions like `noised` which calls it 8 times per invocation, and `fbm3D` which can call `noised` many times), this creates a massive SFU bottleneck on the GPU.
+**Action:** Always replace trig-based hash functions with pure ALU-based alternatives (like Dave Hoskins' hash methods, e.g., `hash11`) for performance-critical path-tracing and noise generation.
