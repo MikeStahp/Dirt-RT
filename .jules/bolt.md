@@ -1,0 +1,3 @@
+## 2026-04-07 - Replace expensive trig functions with ALU hash operations
+**Learning:** Found that `hash12`, `hash13`, `hash14`, and `hash(float)` were using expensive trigonometric operations (`tan`, `atan`, `cos`). In GLSL, this causes Special Function Unit (SFU) bottlenecks, especially since hash functions are called very frequently (e.g., `noised` calls `hash(float)` 8 times per invocation, and `fbm3D` uses 40 calls). Replacing these with Dave Hoskins' pure ALU method eliminates this bottleneck.
+**Action:** Always verify that fundamental noise/hash utility functions in GLSL rely solely on ALU operations (fract, dot, mult, add) and do not regress to using transcendental/trigonometric functions.
