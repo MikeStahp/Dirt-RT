@@ -1,0 +1,3 @@
+## 2026-04-17 - Optimize core hash functions to pure ALU
+**Learning:** In GLSL shaders, using trigonometric operations like `tan`, `atan`, and `cos` inside frequently called hash functions (e.g., `hash12`, `hash13`, `hash14`, `hash`) introduces severe bottlenecks because they rely on the Special Function Unit (SFU) which is typically fewer in number compared to ALU units.
+**Action:** Always prefer Dave Hoskins' pure ALU-based hash methods (using `fract`, `dot`, and basic arithmetic) over those involving transcendental/trigonometric math to prevent SFU saturation, especially for noise/RNG functions invoked heavily per pixel.
