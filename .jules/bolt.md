@@ -1,0 +1,3 @@
+## 2026-04-22 - Prefer ALU-based hash functions over trigonometric ones
+**Learning:** In GLSL shaders, trigonometric functions like tan, atan, and cos within hash functions cause heavy usage of Special Function Units (SFU), which bottlenecks the GPU, especially when called inside loops or multiple octaves of noise (like fbm3D).
+**Action:** Always use pure ALU-based hash functions (like Dave Hoskins' method) instead of ones that rely on trigonometric operations to improve shader performance. Do not delete existing functions, but rather update them or turn them into aliases for the optimized functions.
