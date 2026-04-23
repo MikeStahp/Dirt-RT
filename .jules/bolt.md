@@ -1,0 +1,3 @@
+## 2026-04-23 - [Optimize Hash Functions by using ALU operations]
+**Learning:** [Using expensive trigonometric functions like 'tan' and 'atan' inside frequently called hash functions like hash12, hash13, and hash14 in GLSL creates a significant bottleneck on the Special Function Units (SFU) of the GPU. Relying purely on ALU-based operations is much faster and provides visually acceptable pseudorandomness.]
+**Action:** [Ensure GLSL hash functions strictly use pure ALU-based operations (like Dave Hoskins' method) and avoid regressing to expensive trigonometric operations (`tan`, `atan`, `cos`) to prevent SFU bottlenecks.]
