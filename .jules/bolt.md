@@ -1,0 +1,3 @@
+## 2026-04-25 - [Optimize hash(float) with ALU operations instead of trig]
+**Learning:** [The hash(float) function in shaders/lib/common/hash.glsl used a trigonometric `cos` function, which is expensive for the GPU's Special Function Unit (SFU). This is a critical path since it is called 8 times per `noised` invocation, which itself is used 5 times per `fbm3D` (total 40 hash calls).]
+**Action:** [Replaced the trig-based hash with an alias to the ALU-based `hash11` (Dave Hoskins' method) to reduce instruction cost and prevent SFU bottlenecking while maintaining the same 1-in-1-out functionality.]
