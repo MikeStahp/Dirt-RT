@@ -1,0 +1,3 @@
+## YYYY-MM-DD - Removing Dead Code in Initialization Shader
+**Learning:** In GLSL vertex shaders, logic placed after an explicit `return;` statement is dead code, but may still be compiled and cause confusion for future maintenance or analysis. In this codebase, exposure and luminance averaging logic was duplicated in `shaders/post/init.vsh` but unreachable, as the actual calculation is correctly handled in `shaders/post/exposure.vsh`.
+**Action:** When refactoring shaders or adding uniform calculations, always check for early returns and ensure no redundant dead code blocks are left behind to keep shader sources clean and maintainable.
