@@ -140,9 +140,11 @@ vec4 hash44(vec4 p4)
 }
 
 // Simple hash function
+// ⚡ Bolt: Optimizing by aliasing to hash11 (pure ALU) instead of
+// using expensive trigonometric cos() which causes SFU bottlenecks.
 float hash(float n)
 {
-    return fract(cos(n) * 41415.92653);
+    return hash11(n);
 }
 
 #endif // COMMON_HASH_GLSL
