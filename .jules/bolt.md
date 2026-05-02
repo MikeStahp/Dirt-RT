@@ -1,0 +1,3 @@
+## 2026-05-02 - Expensive Trigonometric Functions in GLSL Hash Functions
+**Learning:** The `hash12`, `hash13`, and `hash14` functions in `shaders/lib/common/hash.glsl` regressed to using expensive trigonometric operations (`tan` and `atan`) and `hash` used `cos`. Trigonometric functions are extremely costly in shaders because they require the Special Function Unit (SFU) which bottlenecks the execution pipelines compared to pure ALU operations like multiply and add.
+**Action:** When implementing or optimizing GLSL hash/noise functions, ensure they strictly use pure ALU-based operations (like Dave Hoskins' method) and do not regress to using expensive trigonometric operations.
