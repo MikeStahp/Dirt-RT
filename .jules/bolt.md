@@ -1,0 +1,3 @@
+## 2026-05-04 - SFU Bottlenecks in GLSL Hash Functions
+**Learning:** Using trigonometric functions like tan and atan in fundamental utility functions like hash generators causes massive Special Function Unit (SFU) bottlenecks, especially when called repeatedly in inner loops (e.g., 40 times per fbm3D call). Dave Hoskins' pure ALU-based hash methods are far superior for performance as they avoid the costly trig functions.
+**Action:** Always prefer ALU-based hash functions over trigonometric ones in GLSL shaders to reduce instruction cost. Strip out tan/atan logic from standard utility hashes like hash12, hash13, and hash14, and maintain backward compatibility by converting redundant variants (like fasthash13) into aliases.
