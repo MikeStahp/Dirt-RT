@@ -1,0 +1,3 @@
+## 2026-05-05 - GLSL Hash Function ALU Optimization
+**Learning:** Some utility functions in the codebase (`hash12`, `hash13`, `hash14`, `hash`) still regress to using expensive trigonometric operations (`tan`, `atan`, `cos`) internally instead of strictly using the pure ALU-based Dave Hoskins method operations, causing Special Function Unit (SFU) bottlenecks.
+**Action:** When working on generic mathematical/noise functions, explicitly ensure that they are completely free of trigonometric functions if Dave Hoskins method can be used directly or if aliases to ALU methods (`hash11`) exist, to reduce SFU overhead.
