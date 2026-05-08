@@ -141,9 +141,8 @@ void finalizeDenoiseBuffer(uint idx, vec3 ro, vec3 rd, vec3 lightDir, bool inver
     denoiseBuffer.data[idx].absorption = infos[0].absorption;
     denoiseBuffer.data[idx].rd = infos[0].rd_i;
 
-    vec3 sumGodRay = vec3(0);
-    for (int i = 0; i < Volumetric_Light_Samples_; i++) {
-        sumGodRay += sampleGodRay(SunLight, MoonLight, ro, rd, infos[0].distance, lightDir, true, inverse_1).xyz;
-    }
-    denoiseBuffer.data[idx].emission = infos[0].emission + sumGodRay * (1.0 / Volumetric_Light_Samples_);
+    // Optimization: Take a single volumetric light sample instead of looping,
+    // as taking multiple identical samples is redundant for the denoiser pass.
+    vec3 sumGodRay = sampleGodRay(SunLight, MoonLight, ro, rd, infos[0].distance, lightDir, true, inverse_1).xyz;
+    denoiseBuffer.data[idx].emission = infos[0].emission + sumGodRay;
 }
