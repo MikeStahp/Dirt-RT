@@ -1,0 +1,3 @@
+## 2026-05-09 - GLSL Hash SFU Bottlenecks
+**Learning:** In GLSL shaders, using trigonometric functions (tan, atan, cos) inside core utility functions like hash generators causes severe Special Function Unit (SFU) bottlenecks, especially when called repeatedly in procedural noise generation like fbm3D. Pure ALU-based methods (like Dave Hoskins' hashes) provide identical utility without stalling the SFU.
+**Action:** Always verify core math/noise utilities for unnecessary transcendental functions and replace them with ALU-based equivalents or existing optimized aliases to prevent cascading performance penalties across multi-pass shader architectures.
