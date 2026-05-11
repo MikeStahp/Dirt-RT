@@ -10,7 +10,9 @@ float b_k = 0.25; //mix
 
 vec3 Mie = vec3(0.02);
 
-vec3 Rayleigh = 5e9 * pow(vec3(1. / 700, 1. / 520, 1. / 450), vec3(4));
+// Optimized for performance: Precompute expensive SFU transcendental pow() with constant arguments
+const vec3 RAYLEIGH_BASE = vec3(4.164931e-12, 1.367687e-11, 2.438653e-11);
+vec3 Rayleigh = 5e9 * RAYLEIGH_BASE;
 
 vec3 b_k0 = mix(Rayleigh, Mie, b_k);
 
@@ -25,7 +27,7 @@ void setSkyVars() {
         case World_THE_END:
         S_R = 0.25;
         cosD_S = 1 / sqrt(1 + S_R * S_R);
-        Rayleigh = 5e9 * pow(vec3(1. / 700, 1. / 520, 1. / 450), vec3(4));
+        Rayleigh = 5e9 * RAYLEIGH_BASE;
 
         Mie = vec3(luma(Rayleigh));
         b_P = vec3(4096);
@@ -35,7 +37,7 @@ void setSkyVars() {
         S_R = 0.05;
         cosD_S = 1 / sqrt(1 + S_R * S_R);
         Mie = vec3(0.2);
-        Rayleigh = 4e11 * pow(vec3(1. / 700, 1. / 520, 1. / 450), vec3(4));
+        Rayleigh = 4e11 * RAYLEIGH_BASE;
         b_P = vec3(600000);
         b_k = 0.5;
         break;
@@ -45,8 +47,8 @@ void setSkyVars() {
         Mie = vec3(0.005);
         
         
-        //Rayleigh = 8e9 * pow(vec3(1. / 700, 1. / 520, 1. / 450), vec3(4));
-        Rayleigh = 5e9 * pow(vec3(1. / 700, 1. / 520, 1. / 450), vec3(4));
+        //Rayleigh = 8e9 * RAYLEIGH_BASE;
+        Rayleigh = 5e9 * RAYLEIGH_BASE;
         Mie = vec3(luma(Rayleigh));
         b_P = vec3(300000);
         b_k = 0.125 + rainStrength_global * 0.875;
