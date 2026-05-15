@@ -1,0 +1,3 @@
+## 2026-05-15 - Trigonometric Bottlenecks in GLSL Hashes
+**Learning:** Using trigonometric functions like `tan`, `atan`, and `cos` inside GLSL hash functions generates massive Special Function Unit (SFU) overhead, severely bottlenecking shaders that perform heavy noise/hashing computations.
+**Action:** Always prefer Dave Hoskins' pure ALU-based hash methods (multiply, add, fract) over any transcendentals. Furthermore, when replacing these, create aliases to existing optimized ALU hash functions (like aliasing `hash(float)` to `hash11`) rather than deleting them to prevent compilation errors and breaking downstream dependencies.
