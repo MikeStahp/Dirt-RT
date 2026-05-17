@@ -1,0 +1,3 @@
+## 2026-05-17 - GLSL SFU Optimization: pow(x, -2) to 1.0 / (x * x)
+**Learning:** The `pow` function in GLSL evaluates to `exp2(y * log2(x))`, which introduces significant Special Function Unit (SFU) overhead. When dealing with constant negative integer exponents like -2, replacing `pow(x, -2)` with the mathematical equivalent `1.0 / (x * x)` is computationally cheaper as it relies strictly on ALU operations (multiplication and division).
+**Action:** Always replace `pow(x, -2)` and similar small constant integer power functions in GLSL with their expanded arithmetic equivalents to reduce expensive SFU usage. Division by zero mathematically behaves identically (yielding infinity), requiring no extra mitigation.
