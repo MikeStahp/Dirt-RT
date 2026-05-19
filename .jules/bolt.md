@@ -1,0 +1,3 @@
+## 2026-05-19 - [Optimize Negative Powers in GLSL]
+**Learning:** Using `pow(x, -2)` in GLSL triggers expensive Special Function Unit (SFU) evaluations (`exp2(-2 * log2(abs(x)))`). Calculating the exact reciprocal of the squared term (`1.0 / (x * x)`) is computationally identical (including division by zero yielding `inf`) but vastly faster by remaining entirely on the Arithmetic Logic Unit (ALU).
+**Action:** When working in GLSL, actively seek out mathematical expressions using `pow` with integer or negative powers and manually refactor them into direct multiplications or division reciprocals to maintain ALU utilization and avoid SFU stalls.
