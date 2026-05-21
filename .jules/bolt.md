@@ -1,0 +1,3 @@
+## 2026-05-21 - [SFU overhead for negative exponents in GLSL]
+**Learning:** Using `pow(x, -2)` in GLSL triggers expensive Special Function Unit (SFU) pipeline evaluations (`exp2(-2 * log2(abs(x)))`). Mathematically, `1.0 / (x * x)` achieves the exact same result (including division by zero yielding infinity) but uses standard fast ALU instructions, completely avoiding the SFU bottleneck. Furthermore, the `abs(x)` call is mathematically redundant before squaring.
+**Action:** When encountering `pow(x, -2)` or `pow(abs(x), -2)` in shader code, always replace it with the mathematical equivalent `1.0 / (x * x)` to optimize ALU usage and reduce instruction latency.
