@@ -1,0 +1,3 @@
+## 2026-05-24 - Avoiding pow(x, -2) SFU overhead
+**Learning:** In GLSL shaders, `pow(abs(x), -2)` evaluates to expensive Special Function Unit (SFU) instructions like `exp2(-2 * log2(abs(x)))`. Furthermore, the `abs()` is mathematically redundant before squaring. Replacing this pattern with `1.0 / (x * x)` achieves the identical result (including division-by-zero yielding `inf`) while saving ALU instructions and lowering SFU bottlenecks.
+**Action:** When finding `pow(x, -2)` or `pow(abs(x), -2)` in GLSL code, replace it with its mathematical equivalent `1.0 / (x * x)` to optimize shader execution.
