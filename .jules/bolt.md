@@ -1,0 +1,3 @@
+## 2026-05-25 - GLSL pow(x, -2) Overhead
+**Learning:** In GLSL shaders, using `pow(x, -2)` incurs expensive Special Function Unit (SFU) overhead because it expands to `exp2(-2.0 * log2(abs(x)))`. This is computationally much heavier than standard ALU math. Additionally, when using `1.0 / (x * x)` instead, any prior `abs(x)` call becomes mathematically redundant because the squared value handles the sign automatically.
+**Action:** When calculating the reciprocal of a squared value in GLSL, always manually unroll `pow(abs(x), -2)` into `1.0 / (x * x)` to avoid hidden SFU bottlenecks and save unnecessary `abs()` operations.
