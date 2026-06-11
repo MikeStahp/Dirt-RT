@@ -1,0 +1,3 @@
+## 2026-06-11 - [GLSL Optimization: pow(x, -2) to 1.0 / (x * x)]
+**Learning:** In GLSL shaders, replacing `pow(x, -2)` with its mathematical equivalent `1.0 / (x * x)` avoids expensive Special Function Unit (SFU) overhead caused by `exp2(-2 * log2(abs(x)))` evaluations. Furthermore, any preceding `abs(x)` operation is mathematically redundant when squaring.
+**Action:** Replace `pow(abs(x), -2)` with `1.0 / (x * x)` in GLSL code to optimize performance, making sure to store inner function results (like `dot(n, w)`) in local variables to avoid redundant evaluations. Also ensure integer literals are converted to float literals.
