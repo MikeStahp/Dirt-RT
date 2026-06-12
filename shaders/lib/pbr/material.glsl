@@ -34,8 +34,11 @@ float adhesion(vec3 n,vec3 w,vec3 g,float a){
     //g:gravity direction
     //n:surface normal
     //a:roughness
-    float tanA=sqrt(max(pow(abs(dot(n,w)),-2)-1,0));
-    float tanB=sqrt(max(pow(abs(dot(n,g)),-2)-1,0));
+    // Optimized pow(x, -2) to 1.0 / (x * x) and removed redundant abs()
+    float dotNW = dot(n, w);
+    float tanA = sqrt(max(1.0 / (dotNW * dotNW) - 1.0, 0.0));
+    float dotNG = dot(n, g);
+    float tanB = sqrt(max(1.0 / (dotNG * dotNG) - 1.0, 0.0));
     float a2=a*a;
     float t=sqrt(tanB*tanB+a2);
     return (float(dot(n,g)<0)*2*a2/
