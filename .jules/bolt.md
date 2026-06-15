@@ -1,0 +1,3 @@
+## 2026-06-15 - GLSL SFU Optimization for pow(x, -2)
+ **Learning:** In GLSL shaders, replacing `pow(x, -2)` with its mathematical equivalent `1.0 / (x * x)` avoids expensive Special Function Unit (SFU) overhead caused by `exp2(-2.0 * log2(abs(x)))` evaluations. Furthermore, any preceding `abs(x)` operation is mathematically redundant and should be omitted to save ALU instructions.
+ **Action:** Always look for and replace `pow(x, -2)` with `1.0 / (x * x)`, first storing the result of the inner function (e.g., a dot product) in a local variable to avoid redundant evaluations when squaring it for the denominator.
