@@ -34,12 +34,15 @@ float adhesion(vec3 n,vec3 w,vec3 g,float a){
     //g:gravity direction
     //n:surface normal
     //a:roughness
-    float tanA=sqrt(max(pow(abs(dot(n,w)),-2)-1,0));
-    float tanB=sqrt(max(pow(abs(dot(n,g)),-2)-1,0));
+    // Optimized: Replace pow() with reciprocal squares
+    float dot_nw = dot(n, w);
+    float tanA=sqrt(max(1.0 / (dot_nw * dot_nw) - 1.0, 0.0));
+    float dot_ng = dot(n, g);
+    float tanB=sqrt(max(1.0 / (dot_ng * dot_ng) - 1.0, 0.0));
     float a2=a*a;
     float t=sqrt(tanB*tanB+a2);
-    return (float(dot(n,g)<0)*2*a2/
-        ((1+sqrt(1+a2*tanA*tanA))*(tanB+t)*t));
+    return (float(dot_ng < 0.0) * 2.0 * a2 /
+        ((1.0 + sqrt(1.0 + a2 * tanA * tanA)) * (tanB + t) * t));
 }
 
 Material getMaterial(vec4 albedo, vec4 normal, vec4 specular, mat3 tbn, float wetStrength, float wetness ,float skylight ,vec3 macroNormal) {
