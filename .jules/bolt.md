@@ -1,0 +1,3 @@
+## 2024-05-24 - Optimizing pow(x, -2) calls in GLSL
+**Learning:** Found explicit use of `pow(abs(x), -2)` in `shaders/lib/pbr/material.glsl` inside `adhesion()`. In GLSL, `pow()` is evaluated on the Special Function Unit (SFU) using `exp2(-2 * log2(abs(x)))`, which is slow. The math is simply `1.0 / (x * x)`, which can be done much faster using basic ALU operations (multiplication and division). Additionally, squaring a value already eliminates the need for `abs()`.
+**Action:** Always replace `pow(x, -2)` or `pow(abs(x), -2)` with `1.0 / (x * x)` in performance-critical shader code, caching `x` if it's an expensive operation like `dot()`.
